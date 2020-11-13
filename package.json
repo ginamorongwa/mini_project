@@ -1,0 +1,23 @@
+{
+  "name": "miniproject",
+  "version": "1.0.0",
+  "description": "change sampling rate of temperature reading",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ginamorongwa/mini_project.git"
+  },
+  "author": "virginia mthimunye",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ginamorongwa/mini_project/issues"
+  },
+  "homepage": "https://github.com/ginamorongwa/mini_project#readme",
+  "dependencies": {
+    "blynk-library": "^0.5.4",
+    "onoff": "^6.0.1"
+  }
+}
