@@ -10,12 +10,13 @@ from datetime import datetime
 import adafruit_mcp3xxx.mcp3008 as MCP
 from adafruit_mcp3xxx.analog_in import AnalogIn
 
+# some global variables that are set once
 eeprom = utils.utils()
 power_button = 23
-rate_button = 24
+rate_button = 25
 buzzer = None
 led = None
-power_value = True
+
 
 # some global variables that need to change as we run the program
 #chan0 = None			# ldr
@@ -23,6 +24,8 @@ chan1 = None			# temp sensor
 tick = datetime.now()	#time.localtime()	#time.time()		# for runtime calculatons
 sampling_rate = 5.0		# default sampling rate
 thread = None			# thread changed if the sampling rate is changed
+power_value = True
+buzzer_counter = 0
 
 
 # setup pins and EEProm
@@ -71,37 +74,42 @@ def setup():
 
 # enable and disable
 def power(channel):
-	print("POWER")
+	#print("POWER")
 	global power_value
+	global buzzer_counter
 	global thread
 	global tick
 
 	tick = datetime.now()	#time.localtime()
 
-	if (power_value):
+	if (power_value == True):
 		# stop thread and clear screen
 		thread.cancel()
 		thread.join()
 		power_value = False
+		os.system('clear')
+		print("The logging has stopped..\nPress power button to continue sampling")
 	else:
 		print("Time\t\tSys Timer\tTemp\t\tBuzzer")
 		power_value = True
+		buzzer_counter = 0
 		my_thread()
 
 # change sampling rate
 def change_sampling_rate(channel):
-	power("SAMPLING RATE")
+	print("SAMPLING RATE")
 	global sampling_rate
 	global thread
 	global tick
+	global buzzer_counter
 
 	# change sampling rate
-	if sampling_rate == 1.0:
+	if sampling_rate == 2.0:
 		sampling_rate = 5.0
 	elif sampling_rate == 5.0:
 		sampling_rate = 10.0
 	else:
-		sampling_rate = 1.0
+		sampling_rate = 2.0
 
 	# reset timer
 	tick = datetime.now()	#time.localtime()
@@ -128,7 +136,7 @@ def calculate_temperature():
 	temperature = (voltage-0.5)/0.01	#(voltage * (value / 1023) - 0.5) / 0.01
 
 	# return voltage and temperature
-	return voltage, temperature
+	return value, voltage, temperature
 
 
 def diff(h, m, s):
@@ -164,47 +172,29 @@ def diff(h, m, s):
 def get_runtime():
 	global tick
 
-	# calculate runtime
 	current_time = datetime.now()
 
 	h = int(current_time.strftime("%H")) - int(tick.strftime("%H"))
 	m = int(current_time.strftime("%M")) - int(tick.strftime("%M"))
 	s = int(current_time.strftime("%S")) - int(tick.strftime("%S"))
 
-	tock = diff(h, m, s)	#str(h) +":"+str(m)+":"+str(s)
-	sys_timer = datetime.strptime(tock, "%H:%M:%S")
-	#print("tick:",tick)
-	#print("current_time:",current_time)
-	#print("tock:",tock)
-	#time.localtime()	#time.time()
-	#a = datetime.strftime("%H", time.gmtime())	#
-	#b = current_time.strftime("%B")
-	#print(current_time)
-	#print(b)
-	return current_time, sys_timer
-"""
-	h = int(datetime.strftime("%H", current_time)) - int(datetime.strftime("%H", tick))
-	m = int(datetime.strftime("%M", current_time)) - int(datetime.strftime("%M", tick))
-	s = int(datetime.strftime("%S", current_time)) - int(datetime.strftime("%S", tick))
-
-	tock = str(h) +":"+str(m)+":"+str(s)
+	tock = diff(h, m,s)
 	sys_timer = datetime.strptime(tock, "%H:%M:%S")
 
-	#tock = current_time - tick
-
-	# return runtime
 	return current_time, sys_timer
-"""
+
 
 def fetch_data(start, temp_count):
-	temp_list = eeprom.read_block(start, temp_count * 4)
+	temp_list = eeprom.read_block(start, temp_count * 20)
 	temperatures = [[0]*2]*0
 	for i in range(0, temp_count):
 		entry = []
-		for j in range(0, 4):
-			#print(chr(temp_list[4*i+j]))
-			entry.append(chr(temp_list[4*i+j]))
-		temperatures.append(entry)
+		for j in range(0, 20):
+			if chr(temp_list[20*i+j]) != '\x00':
+				entry.append(chr(temp_list[20*i+j]))
+		if entry != []:
+			temperatures.append(entry)
+			#print(entry)
 	return temperatures
 
 
@@ -224,7 +214,7 @@ def update_eeprom(new_reading):
 		temperatures = fetch_data(2, temp_count)	# get last 19 temperatures
 
 	temperatures.append(new_reading)
-	#temp_count = temp_count + 1
+
 	save_data(temp_count, temperatures)
 
 
@@ -239,12 +229,26 @@ def save_data(temp_count, temperatures):
 	eeprom.write_block(1, data_to_write)
 
 
+def trigger_buzzer():
+	global buzzer
+	global sampling_rate
+
+	buzzer.start(50)
+	if sampling_rate == 2:
+		buzzer.ChangeFrequency(10)
+	elif sampling_rate == 5:
+		buzzer.ChangeFrequency(5)
+	else:
+		buzzer.ChangeFrequency(2)
+
+
+
 # runtime thread
 def my_thread():
+	global buzzer
 	global thread
-	#global tick
-	#global chan0
-	#global chan1
+	global sampling_rate
+	global buzzer_counter
 
 	# set timer and start the thread
 	thread = threading.Timer(sampling_rate, my_thread)
@@ -253,19 +257,27 @@ def my_thread():
 
 	# get runtime and temperature
 	a, b = get_runtime()
-	voltage, temperature = calculate_temperature()
-	#value = chan.value
+	value, voltage, temperature = calculate_temperature()
+	value = str(value)
 
 	current_time = a.strftime("%H:%M:%S")
 	sys_timer = b.strftime("%H:%M:%S")
 
-	#hour = a.strftime("%H")
-	#minute = a.strftime("%M")
+	new_reading = []
 
+	for c in range(0, len(current_time)):
+		new_reading.append(current_time[c])
+
+	for q in range(0, len(value)):
+		new_reading.append(value[q])
+
+	volt = str(round(voltage, 1))
+	for v in range(0, len(volt)):
+		new_reading.append(volt[v])
 
 	temp = str(round(temperature, 2))
 	#print(temp)
-	new_reading = []
+	#new_reading = []
 	if temp[2] == ".":
 		new_reading.append(temp[0])
 		new_reading.append(temp[1])
@@ -286,7 +298,15 @@ def my_thread():
 	update_eeprom(new_reading)
 	#print(str(chan1.value)+" "+str(voltage)+" "+ str((voltage-0.5)/0.01))
 	# display
-	print("%s\t%s\t%.2f C" %(current_time, sys_timer, temperature))
+	if buzzer_counter == 0 or buzzer_counter % 5 == 0:
+		print("%s\t%s\t%.2f C\t\t*" %(current_time, sys_timer, temperature))
+		trigger_buzzer()
+	else:
+		buzzer.stop()
+		print("%s\t%s\t%.2f C" %(current_time, sys_timer, temperature))
+	buzzer_counter = buzzer_counter + 1
+
+
 
 def clean():
 	global led
@@ -310,7 +330,7 @@ if __name__ == "__main__":
 			pass
 	except KeyboardInterrupt as k:
 		print(" ")
-	except OSError as o:
+	except RemoteIOError as o:
 		print(" ")
 	except Exception as e:
 		print(e)
