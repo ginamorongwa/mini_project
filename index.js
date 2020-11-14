@@ -1,3 +1,4 @@
+
 var Blynk = require('blynk-library');
 
 var AUTH = 'goHQikL3hfv-uYQcrgAl0iFkM5_0Y_uZ';
@@ -13,4 +14,10 @@ v1.on('write', function(param) {
 
 v9.on('read', function() {
   v9.write(new Date().getSeconds());
+});
+
+var term = new blynk.WidgetTerminal(3);
+term.on('write', function(data) {
+  term.write('You wrote:' + data + '\n');
+  blynk.notify("HAHA! " + data);
 });

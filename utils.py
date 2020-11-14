@@ -120,5 +120,5 @@ class utils:
 
 if __name__ == "__main__":
     eeprom = utils()
-    eeprom.clear(4096)
+    #eeprom.clear(4096)
     eeprom.populate_mock_scores()

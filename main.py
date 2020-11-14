@@ -315,7 +315,7 @@ def clean():
 
 	led.stop()
 	buzzer.stop()
-	eeprom.clear(4096)
+	#eeprom.clear(4096)
 	GPIO.cleanup()
 
 
