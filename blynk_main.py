@@ -5,37 +5,50 @@ import threading
 import busio
 import digitalio
 import board
+import socket
+import blynklib
+import blynktimer
 import RPi.GPIO as GPIO
 from datetime import datetime
 import adafruit_mcp3xxx.mcp3008 as MCP
 from adafruit_mcp3xxx.analog_in import AnalogIn
 
+
 # some global variables that are set once
 eeprom = utils.utils()
 power_button = 23
 rate_button = 25
-buzzer = None
-
 
 # some global variables that need to change as we run the program
 chan1 = None			# temp sensor
-tick = datetime.now()	# for runtime calculatons
+tick = datetime.now()	#time.localtime()	#time.time()		# for runtime calculatons
 sampling_rate = 5.0		# default sampling rate
-thread = None			# thread changed if the sampling rate is changed
-power_value = True		# used to check if the system is logging
-buzzer_counter = 0		# checked to trigger the buzzer
+#thread = None			# thread changed if the sampling rate is changed
+power_value = True
+buzzer_counter = 0
 
+#BLYNK_AUTH = '_NnRYkSEuE2vxZqT22Cv46xUXS9GZcPU'
+BLYNK_AUTH = 'goHQikL3hfv-uYQcrgAl0iFkM5_0Y_uZ'
+#BLYNK_AUTH = 'PjYgM_UC3TTOnZrA9GSyc5vcsq24fpJw'
+blynk = blynklib.Blynk(BLYNK_AUTH)
+timer = blynktimer.Timer()
 
 # setup pins and EEProm
 def setup():
 	global buzzer
+	global led
+	global blynk
+	#global timer
 	global chan1
 	global power_button
 	global rate_button
-	global eeprom
+	#global eeprom
+	global BLYNK_AUTH
+
+	blynk = blynklib.Blynk(BLYNK_AUTH)
+	#timer = blynktimer.Timer()
 
 	eeprom.write_block(0, [0])
-	#time.sleep(1)
 
 	# create the spi bus
 	spi = busio.SPI(clock=board.SCK, MISO=board.MISO, MOSI=board.MOSI)
@@ -46,9 +59,11 @@ def setup():
 	# create the mcp object
 	mcp = MCP.MCP3008(spi, cs)
 
-	# create an analog input channel on pin 0 & 1
-	#chan0 = AnalogIn(mcp, MCP.P0)
+	# create an analog input channel on pin 1
 	chan1 = AnalogIn(mcp, MCP.P1)
+
+	GPIO.setwarnings(False)
+	GPIO.setmode(GPIO.BCM)
 
 	# setup led
 	GPIO.setup(12, GPIO.OUT)
@@ -66,17 +81,15 @@ def setup():
 	GPIO.add_event_detect(power_button, GPIO.FALLING, callback=power, bouncetime=300)
 	GPIO.add_event_detect(rate_button, GPIO.FALLING, callback=change_sampling_rate, bouncetime=300)
 
-
-
 # enable and disable
 def power(channel):
+	#print("POWER")
 	global power_value
 	global buzzer_counter
-	global thread
+	#global thread
 	global tick
 
-	# generate new sys_timer
-	tick = datetime.now()
+	tick = datetime.now()	#time.localtime()
 
 	if (power_value == True):
 		# stop thread and clear screen
@@ -89,12 +102,14 @@ def power(channel):
 		print("Time\t\tSys Timer\tTemp\t\tBuzzer")
 		power_value = True
 		buzzer_counter = 0
-		my_thread()
+		#my_thread()
+
 
 # change sampling rate
 def change_sampling_rate(channel):
+	#print("SAMPLING RATE")
 	global sampling_rate
-	global thread
+	#global thread
 	global tick
 	global buzzer_counter
 
@@ -107,17 +122,18 @@ def change_sampling_rate(channel):
 		sampling_rate = 2.0
 
 	# reset timer
-	tick = datetime.now()
+	tick = datetime.now()	#time.localtime()
+
+	#timer.set_interval(sampling_rate, virtual_pin_handler)
 
 	# stop: cancel, join
-	thread.cancel()
+	'''thread.cancel()
 	thread.join()
 
 	# start thread again
-	my_thread()
+	my_thread()'''
 
 
-# get temperature, value an voltage from sensor
 def calculate_temperature():
 	global chan1
 
@@ -128,22 +144,20 @@ def calculate_temperature():
 	value = chan1.value
 
 	# convert to temperature
-	temperature = (voltage-0.5)/0.01
+	temperature = (voltage-0.5)/0.01	#(voltage * (value / 1023) - 0.5) / 0.01
 
 	# return voltage and temperature
 	return value, voltage, temperature
 
 
-
-# get a valid time
 def diff(h, m, s):
 
-	if s < 0:							# check if seconds are < 0
-		s = 60 + s						# take 1 from minute and convert to 60 seconds
-		if m < 0:						# check if minutes are < 0
-			m =  59 + m					# minutes are m-1 because seconds < 0
-			if h < 0:					# check if hour is < 0
-				h = 23 + h				# hour is h-1 because minutes < 0
+	if s < 0:
+		s = 60 + s
+		if m < 0:
+			m =  59 + m
+			if h < 0:
+				h = 23 + h
 			else:
 				h = h - 1
 		else:
@@ -152,67 +166,49 @@ def diff(h, m, s):
 				h = 24 + h
 	else:
 		if m < 0:
-			m = 60 + m					# borrow 60 minute from hour
+			m = 60 + m
 			if h < 0:
 				h = 23 + h
 			else:
 				h = h - 1
 		else:
+			#m = m - 1
 			if h < 0:
 				h = 24 + h
 
-	tock = str(h) +":"+str(m)+":"+str(s)	# return time in HH:MM:SS format
+	tock = str(h) +":"+str(m)+":"+str(s)
 	return tock
 
 
-
-# calculate sys_timer
 def get_runtime():
 	global tick
 
-	# get current time
 	current_time = datetime.now()
 
-	# calculate systimer
 	h = int(current_time.strftime("%H")) - int(tick.strftime("%H"))
 	m = int(current_time.strftime("%M")) - int(tick.strftime("%M"))
 	s = int(current_time.strftime("%S")) - int(tick.strftime("%S"))
 
-	# get a valid time
 	tock = diff(h, m,s)
 	sys_timer = datetime.strptime(tock, "%H:%M:%S")
 
 	return current_time, sys_timer
 
 
-
-# fetch data from eeprom
 def fetch_data(start, temp_count):
-	temp_list = eeprom.read_block(start, temp_count * 20)		# a single reading consists of 20 characters
-	temperatures = [[0]*2]*0									# create a 2d empty list
+	temp_list = eeprom.read_block(start, temp_count * 20)
+	temperatures = [[0]*2]*0
 	for i in range(0, temp_count):
-		entry = []												# store a reading (with 20 characters)
+		entry = []
 		for j in range(0, 20):
-			if chr(temp_list[20*i+j]) != '\x00':				# don't take item having \x00
+			if chr(temp_list[20*i+j]) != '\x00':
 				entry.append(chr(temp_list[20*i+j]))
-		if entry != []:											# don't add empty lists
+		if entry != []:
 			temperatures.append(entry)
-	return temperatures											# return list containing readings
+			#print(entry)
+	return temperatures
 
 
-
-''' calls methods 'fetch_data' and save_data to
-	get data and save data from and to respectively.
-	checks the number of readings in the eeprom
-	if number is 0:
-		- an empty 2d list is created
-	elif number between 1 and 19 (inclusive)
-		- all readings are fetched from the eeprom
-	else
-		- the last 19 reading are fetched from the eeprom
-	adds new reading to list and
-	call 'save_data' method to write to eeprom
-'''
 def update_eeprom(new_reading):
 	global eeprom
 
@@ -233,40 +229,32 @@ def update_eeprom(new_reading):
 	save_data(temp_count, temperatures)
 
 
-
-# write data to eeprom
 def save_data(temp_count, temperatures):
 	temp_count = temp_count + 1
-	eeprom.write_block(0, [temp_count])				# used to check the number of readings
-	data_to_write = []								# store in a 1d list
+	eeprom.write_block(0, [temp_count])
+	data_to_write = []
 
 	for reading in temperatures:
 		for item in reading:
 			data_to_write.append(ord(item))
-	eeprom.write_block(1, data_to_write)			# write to eeprom
+	eeprom.write_block(1, data_to_write)
 
 
-
-''' trigger buzzer fo:
-		- for first reading or
-		- when the buzzer counter is the multiple of 5
-'''
 def trigger_buzzer():
 	global buzzer
 	global sampling_rate
 
 	buzzer.start(50)
 	if sampling_rate == 2:
-		buzzer.ChangeFrequency(10)		# ten times in a second
+		buzzer.ChangeFrequency(10)
 	elif sampling_rate == 5:
-		buzzer.ChangeFrequency(5)		# five times in a second
+		buzzer.ChangeFrequency(5)
 	else:
-		buzzer.ChangeFrequency(2)		# two times in a second
+		buzzer.ChangeFrequency(2)
 
 
-
-# systimer thread
-def my_thread():
+# runtime thread
+'''def my_thread():
 	global buzzer
 	global thread
 	global sampling_rate
@@ -277,43 +265,41 @@ def my_thread():
 	thread.daemon = True
 	thread.start()
 
-	# get systimer, voltage and temperature
+	# get runtime and temperature
 	a, b = get_runtime()
 	value, voltage, temperature = calculate_temperature()
 	value = str(value)
 
-	# get the time in HH:MH:SS format
+
+
 	current_time = a.strftime("%H:%M:%S")
 	sys_timer = b.strftime("%H:%M:%S")
 
-	# store current time , value from sensor, voltage and temperature
 	new_reading = []
 
-	# apend current time
 	for c in range(0, len(current_time)):
 		new_reading.append(current_time[c])
 
-	# append value from the sensor
 	for q in range(0, len(value)):
 		new_reading.append(value[q])
 
-	# round coltage to 1 decimal place and append to list
 	volt = str(round(voltage, 1))
 	for v in range(0, len(volt)):
 		new_reading.append(volt[v])
 
-	# round temperature to 2 decimal places and append to list
-	temp = str(round(temperature, 2))	# check if there are 2 digits before decimal point
+	temp = str(round(temperature, 2))
+	#print(temp)
+	#new_reading = []
 	if temp[2] == ".":
 		new_reading.append(temp[0])
 		new_reading.append(temp[1])
 		new_reading.append(temp[3])
-		if len(temp) == 5:				# check if there are 2 values after decimal point
+		if len(temp) == 5:
 			new_reading.append(temp[4])
 		else:
-			new_reading.append("0")		# add 0 at the end for number to have 2 decimal places
+			new_reading.append("0")
 	else:
-		new_reading.append("0")			# add 0 at the beginning for number to have 2 digits before decimal point
+		new_reading.append("0")
 		new_reading.append(temp[0])
 		new_reading.append(temp[2])
 		if len(temp) == 4:
@@ -321,28 +307,97 @@ def my_thread():
 		else:
 			new_reading.append("0")
 
-	# add new reading to eeprom
 	update_eeprom(new_reading)
 
-	''' display results to terminal and
-		check if:
-			- this is the first reading or
-			- this reading is a multiple of 5
-	'''
+	# display
 	if buzzer_counter == 0 or buzzer_counter % 5 == 0:
 		print("%s\t%s\t%.2f C\t\t*" %(current_time, sys_timer, temperature))
-		trigger_buzzer()				# trigger buzzer
+		trigger_buzzer()
 	else:
-		buzzer.stop()					# stop the buzzer sound
+		buzzer.stop()
 		print("%s\t%s\t%.2f C" %(current_time, sys_timer, temperature))
-	buzzer_counter = buzzer_counter + 1	# increment the buzzer counter
+	buzzer_counter = buzzer_counter + 1'''
+
+
+
+#@blynk.handle_event('read v11')
+@timer.register(vpin_num=11, interval=sampling_rate, run_once=False)
+def virtual_pin_handler(vpin_num):	#pin):
+	global blynk
+	global buzzer
+	#global thread
+	global sampling_rate
+	global buzzer_counter
+
+	# set timer and start the thread
+
+	# get runtime and temperature
+	a, b = get_runtime()
+	#value, voltage, temperature = calculate_temperature()
+	#value = str(value)
+
+
+
+	current_time = a.strftime("%H:%M:%S")
+	sys_timer = b.strftime("%H:%M:%S")
+
+
+	new_reading = []
+
+	for c in range(0, len(current_time)):
+		new_reading.append(current_time[c])
+
+	for q in range(0, len(value)):
+		new_reading.append(value[q])
+
+	volt = str(round(voltage, 1))
+	for v in range(0, len(volt)):
+		new_reading.append(volt[v])
+
+	temp = str(round(temperature, 2))
+	#print(temp)
+	#new_reading = []
+	if temp[2] == ".":
+		new_reading.append(temp[0])
+		new_reading.append(temp[1])
+		new_reading.append(temp[3])
+		if len(temp) == 5:
+			new_reading.append(temp[4])
+		else:
+			new_reading.append("0")
+	else:
+		new_reading.append("0")
+		new_reading.append(temp[0])
+		new_reading.append(temp[2])
+		if len(temp) == 4:
+			new_reading.append(temp[3])
+		else:
+			new_reading.append("0")
+
+	update_eeprom(new_reading)
+
+	# display
+	if buzzer_counter == 0 or buzzer_counter % 5 == 0:
+		print("%s\t%s\t%.2f C\t\t*" %(current_time, sys_timer, temperature))
+		trigger_buzzer()
+		#blynk.virtual_write(6, temperature)
+	else:
+		buzzer.stop()
+		print("%s\t%s\t%.2f C" %(current_time, sys_timer, temperature))
+		#blynk.virtual_write(6, temperature)
+	buzzer_counter = buzzer_counter + 1
+	blynk.virtual_write(11, round(35.22, 2))
 
 
 
 def clean():
+	global led
 	global buzzer
+	#global eeprom
 
-	buzzer.stop()
+	#led.stop()
+	#buzzer.stop()
+	#eeprom.clear(4096)
 	GPIO.cleanup()
 
 
@@ -351,13 +406,10 @@ if __name__ == "__main__":
 	try:
 		setup()
 		print("Time\t\tSys Timer\tTemp\t\tBuzzer")
-		my_thread()		# call a timer thread
-
 		while True:
-			pass
+			blynk.run()
+			timer.run()
 	except KeyboardInterrupt as k:
-		print(" ")
-	except RemoteIOError as o:
 		print(" ")
 	except Exception as e:
 		print(e)
