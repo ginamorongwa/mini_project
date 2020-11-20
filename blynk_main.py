@@ -57,8 +57,8 @@ def setup():
 	# create an analog input channel on pin 1
 	chan1 = AnalogIn(mcp, MCP.P1)
 
-	#GPIO.setwarnings(False)
-	#GPIO.setmode(GPIO.BCM)
+	GPIO.setwarnings(False)
+	GPIO.setmode(GPIO.BCM)
 
 
 
