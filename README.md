@@ -3,12 +3,12 @@ MINI PROJECT A/B
 
 INSTALL LIBRARIES
 -----------------
-sudo apt-get update
-sudo apt install python3-pip
-sudo apt-get install python3-rpi.gpio
-sudo pip3 install smbus2
-sudo apt install build-essential python3-dev python3-smbus python3-pip
-sudo pip3 install adafruit-circuitpython-mcp3xxx
+$ sudo apt-get update
+$ sudo apt install python3-pip
+$ sudo apt-get install python3-rpi.gpio
+$ sudo pip3 install smbus2
+$ sudo apt install build-essential python3-dev python3-smbus python3-pip
+$ sudo pip3 install adafruit-circuitpython-mcp3xxx \n
 blynk: lib-python/README.md
 
 
