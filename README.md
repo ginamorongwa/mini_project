@@ -1,5 +1,5 @@
 MINI PROJECT A/B
-----------------
+---------------- <pre>
 Objective for Mini-Project A environment logger. Mini-Project B is an add-on to
 Mini-Project A which involves minimal work to extend the functionality of the monitoring
 system. <br/>
@@ -14,31 +14,31 @@ effects to forecast, though the principles remains the same. <br/>
 
 Project A and B differ in how that data is presented to end users. Project A is simply accessed
 through a terminal. Project B will add reporting data to Blynk, an app that can be installed
-on smartphones. The environment logger can also be controlled via the Blynk app.
+on smartphones. The environment logger can also be controlled via the Blynk app. </pre>
+
 
 INSTALL LIBRARIES
------------------
-$ sudo apt-get update <br/>
-$ sudo apt install python3-pip <br/>
-$ sudo apt-get install python3-rpi.gpio <br/>
-$ sudo pip3 install smbus2 <br/>
-$ sudo apt install build-essential python3-dev python3-smbus python3-pip <br/>
-$ sudo pip3 install adafruit-circuitpython-mcp3xxx <br/>
-blynk: lib-python/README.md
+----------------- <pre>
+$ sudo apt-get update
+$ sudo apt install python3-pip
+$ sudo apt-get install python3-rpi.gpio
+$ sudo pip3 install smbus2
+$ sudo apt install build-essential python3-dev python3-smbus python3-pip
+$ sudo pip3 install adafruit-circuitpython-mcp3xxx
+blynk: lib-python/README.md </pre>
 
 
 RUN
----
-<pre>
+--- <pre>
 project A:
 	- python3 main.py
 project B:
-	- python3 blynk_main.py
-</pre?
+	- python3 blynk_main.py </pre>
+
 
 DIRECTORY STRUCTURE
------------------
-/MiniProject <br/>
+------------------- <pre>
+/MiniProject
 
 	Directory:
 	/lib-python
@@ -47,11 +47,11 @@ DIRECTORY STRUCTURE
 	/README.md
 	/blynk_main.py
 	/main.py
-	/utils.py
+	/utils.py </pre>
+
 
 FILE STRUCTURE
---------------
-<pre>
+-------------- <pre>
 utils.py: 
 	contains methods to read and write from and to EEPROM
 	used by both main and blynk_main
@@ -61,5 +61,4 @@ main.py:
 blynk_main.py:
 	contains main method for project B
 	starts blynk thread and
-	blynktimer thread
-</pre>
+	blynktimer thread </pre>
