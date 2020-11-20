@@ -29,33 +29,37 @@ blynk: lib-python/README.md
 
 RUN
 ---
-project A: <br/>
-	- python3 main.py <br/>
-project B: <br/>
-	- python3 blynk_main.py <br/>
-
+<pre>
+project A:
+	- python3 main.py
+project B:
+	- python3 blynk_main.py
+</pre?
 
 DIRECTORY STRUCTURE
 -----------------
 /MiniProject <br/>
-	Directory: <br/>
-	/lib-python <br/>
+
+	Directory:
+	/lib-python
 	
-	Files: <br/>
-	/README.md <br/>
-	/blynk_main.py <br/>
-	/main.py <br/>
-	/utils.py <br/>
+	Files:
+	/README.md
+	/blynk_main.py
+	/main.py
+	/utils.py
 
 FILE STRUCTURE
 --------------
-utils.py: <br/>
-	contains methods to read and write from and to EEPROM <br/><br/>
-	used by both main and blynk_main <br/>
-main.py: <br/>
-	contains main method for project A <br/>
-	call a mthod that starts a Timer thread <br/>
-blynk_main.py: <br/>
-	contains main method for project B <br/>
-	starts blynk thread and <br/>
-	blynktimer thread <br/>
+<pre>
+utils.py: 
+	contains methods to read and write from and to EEPROM
+	used by both main and blynk_main
+main.py:
+	contains main method for project A
+	call a mthod that starts a Timer thread
+blynk_main.py:
+	contains main method for project B
+	starts blynk thread and
+	blynktimer thread
+</pre>
